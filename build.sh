@@ -1,1 +1,1 @@
-docker build -t gollum .
+docker build -t gollum container

@@ -1,0 +1,26 @@
+diff --git a/lib/gollum-lib/filter/render.rb b/lib/gollum-lib/filter/render.rb
+index bf90ba9..c2a93e8 100644
+--- a/lib/gollum-lib/filter/render.rb
++++ b/lib/gollum-lib/filter/render.rb
+@@ -3,7 +3,7 @@
+ class Gollum::Filter::Render < Gollum::Filter
+   def extract(data)
+     begin
+-      working_dir = Pathname.new(@markup.wiki.path).join(@markup.dir)
++      working_dir = Pathname.new(@markup.wiki.path)
+       working_dir = working_dir.exist? ? working_dir.to_s : '.'
+       Dir.chdir(working_dir) do
+         data = GitHub::Markup.render_s(@markup.format, data)
+diff --git a/lib/gollum-lib/markups.rb b/lib/gollum-lib/markups.rb
+index 5995670..3856a01 100644
+--- a/lib/gollum-lib/markups.rb
++++ b/lib/gollum-lib/markups.rb
+@@ -89,7 +89,7 @@ module Gollum
+              :extensions => ['adoc','asciidoc'])
+     register(:mediawiki, "MediaWiki",
+              :enabled => MarkupRegisterUtils::gem_exists?("wikicloth"),
+-             :extensions => ['mediawiki','wiki'], :reverse_links => true)
++             :extensions => ['mediawiki','wiki'], :reverse_links => true, :skip_filters => [:Tags])
+     register(:pod, "Pod",
+              :enabled => MarkupRegisterUtils::executable_exists?("perl"))
+     register(:bib, "BibTeX", :extensions => ['bib'],

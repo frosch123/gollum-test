@@ -1,0 +1,166 @@
+diff --git a/lib/wikicloth/wiki_buffer.rb b/lib/wikicloth/wiki_buffer.rb
+index f4e1861..24d2560 100644
+--- a/lib/wikicloth/wiki_buffer.rb
++++ b/lib/wikicloth/wiki_buffer.rb
+@@ -64,7 +64,26 @@ class WikiBuffer
+   end
+ 
+   def to_html
+-    self.params.join("\n") + (@list_data.empty? ? "" : render_list_data()) + (@paragraph_open ? "</p>" : "")
++    translations = ""
++    categories = ""
++    link_handler = @options[:link_handler]
++    if link_handler.translation then
++      begin
++        translations = IO.read(".translation/" + link_handler.translation + ".html")
++      rescue
++        translations = "Translation cache outdated<br/>"
++      end
++    end
++    if link_handler.categories then
++        categories << "<div id='catlinks' class='catlinks'>Category:<ul>\n"
++        link_handler.categories.each do |cat|
++            title = cat.split(/[\/]/)[-1]
++            categories << "<li><a href=\"/Category/#{cat}\">#{title}</a></li>\n"
++        end
++        categories << "</ul></div\n"
++    end
++
++    translations + self.params.join("\n") + (@list_data.empty? ? "" : render_list_data()) + (@paragraph_open ? "</p>" : "") + categories
+   end
+ 
+   def check_globals()
+diff --git a/lib/wikicloth/wiki_buffer/link.rb b/lib/wikicloth/wiki_buffer/link.rb
+index c707f2b..b876f0d 100644
+--- a/lib/wikicloth/wiki_buffer/link.rb
++++ b/lib/wikicloth/wiki_buffer/link.rb
+@@ -16,11 +16,11 @@ class WikiBuffer::Link < WikiBuffer
+     link_handler = @options[:link_handler]
+     unless self.internal_link || params[0].strip !~ /^\s*((([a-z]+):\/\/|mailto:)|[\?\/])(.*)/
+       if $1.downcase == "mailto:"
+-	return link_handler.external_link("#{params[0]}".strip, $4)
++        return link_handler.external_link("#{params[0]}".strip, $4)
+       elsif params.length > 1
+-	return link_handler.external_link("#{params[0]}".strip, params.last.strip)
++        return link_handler.external_link("#{params[0]}".strip, params.last.strip)
+       else
+-	return link_handler.external_link("#{params[0]}".strip)
++        return link_handler.external_link("#{params[0]}".strip)
+       end
+     else
+       case
+@@ -75,7 +75,6 @@ class WikiBuffer::Link < WikiBuffer
+       self.current_param = self.data
+       if self.internal_link == true
+         self.data.chop!.rstrip!
+-        self.params << "" unless self.params.size > 1
+         @checktrailing = true
+       else
+         self.data = ""
+diff --git a/lib/wikicloth/wiki_link_handler.rb b/lib/wikicloth/wiki_link_handler.rb
+index 249df43..96e685d 100644
+--- a/lib/wikicloth/wiki_link_handler.rb
++++ b/lib/wikicloth/wiki_link_handler.rb
+@@ -88,6 +88,10 @@ class WikiLinkHandler < WikiNamespaces
+     @categories ||= []
+   end
+ 
++  def translation
++    @translation ||= ""
++  end
++
+   def find_reference_by_name(n)
+     references.each { |r| return r if !r[:name].nil? && r[:name].strip == n }
+     return nil
+@@ -102,6 +106,10 @@ class WikiLinkHandler < WikiNamespaces
+     @categories = val
+   end
+ 
++  def translation=(val)
++    @translation = val
++  end
++
+   def languages=(val)
+     @languages = val
+   end
+@@ -128,21 +136,37 @@ class WikiLinkHandler < WikiNamespaces
+   end
+ 
+   def url_for(page)
+-    "#{page}"
++    if page =~ /^#/ then
++        page
++    else
++        "/#{page}"
++    end
+   end
+ 
+   def image_url_for(image)
+-    "#{image}"
++    "/uploads/#{image}"
+   end
+ 
+   def link_attributes_for(page)
+-     { :href => url_for(page) }
++    # We have to check existence of the page here.
++    # Doing it inside gollum-lib/markup.rb is too complicated,
++    # because someone url-encodes the href somewhere on the way.
++
++    case
++    when page =~ /^#/
++      css = "internal anchorlink"
++    when File.exists?(page + ".mediawiki")
++      css = "internal present"
++    else
++      css = "internal absent"
++    end
++
++    { :href => url_for(page), :class => css }
+   end
+ 
+   def link_for(page, text)
+     self.internal_links << page
+-    ltitle = !text.nil? && text.blank? ? self.pipe_trick(page) : text
+-    ltitle = page if text.nil?
++    ltitle = text.nil? ? page.split(/[\/#]/)[-1] : text
+     elem.a(link_attributes_for(page)) { |x| x << ltitle.strip }
+   end
+ 
+@@ -168,7 +192,11 @@ class WikiLinkHandler < WikiNamespaces
+   end
+ 
+   def template(template)
+-    nil
++    begin
++      return IO.read("Template/" + template + ".mediawiki")
++    rescue
++      return "'''(Failed to load template '" + template + "')'''"
++    end
+   end
+ 
+   def link_for_resource(prefix, resource, options=[])
+@@ -179,21 +207,17 @@ class WikiLinkHandler < WikiNamespaces
+       ret += wiki_image(resource,options,prefix)
+     when CATEGORY_NAMESPACES.include?(prefix)
+       self.categories << resource
++    when prefix == "translation"
++      self.translation = resource
+     when LANGUAGE_NAMESPACES.include?(prefix)
+       self.languages[prefix] = resource
+     else
+-      title = options[0] ? options[0] : "#{prefix}:#{resource}"
+-      ret += link_for("#{prefix}:#{resource}",title)
++      ret += link_for("#{prefix}:#{resource}", options[0])
+     end
+     ret
+   end
+ 
+   protected
+-  def pipe_trick(page)
+-    t = page.split(":")
+-    t = t[1..-1] if t.size > 1
+-    return t.join("").split(/[,(]/)[0]
+-  end
+ 
+   # this code needs some work... lots of work
+   def wiki_image(resource,options,prefix='Image')
