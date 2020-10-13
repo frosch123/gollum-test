@@ -3,7 +3,7 @@ import os
 import sys
 import re
 
-REPO_PATH = sys.argv[1]
+REPO_PATH = sys.argv[1].rstrip("/")
 
 # TODO differential updates
 # TODO cleanup old files
@@ -66,6 +66,6 @@ for name, members in translations.items():
         for member in members:
             language = member.split("/")[1]
             f.write("""<div style="display:inline-block;  height: 3em; width: 26px; text-align:center;">""" +
-                    """<a href="/{}"><img src="/uploads/{}/Flag.png"</img><br/>{}</a>""".format(member, language, language.upper()) +
+                    """<a href="/{}"><img src="/uploads/{}/Flag.png"/><br/>{}</a>""".format(member, language, language.upper()) +
                     """</div>\n""")
-        f.write("""</div>\n""")
+        f.write("""</div>\n<div style="clear:both"></div>\n""")
