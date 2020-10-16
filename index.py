@@ -17,7 +17,7 @@ translations = dict()
 for dirpath, _, filenames in os.walk(REPO_PATH):
     assert dirpath.startswith(REPO_PATH)
     dirpath = dirpath[(len(REPO_PATH)+1):]
-    if dirpath.startswith(".") or dirpath.startswith("uploads"):
+    if dirpath.startswith(".") or dirpath.startswith("File"):
         continue
     for fn in filenames:
         filename = os.path.join(dirpath, fn)
@@ -64,8 +64,12 @@ for name, members in translations.items():
     with open(filename, "wt") as f:
         f.write("""<div style="float: right; border: 1px solid #c7c8fe; background-color: #EEE; padding:0px;">\n""")
         for member in members:
-            language = member.split("/")[1]
+            parts = member.split("/")
+            if parts[0] in ["File", "Category", "Template"]:
+                language = parts[1]
+            else:
+                language = parts[0]
             f.write("""<div style="display:inline-block;  height: 3em; width: 26px; text-align:center;">""" +
-                    """<a href="/{}"><img src="/uploads/{}/Flag.png"/><br/>{}</a>""".format(member, language, language.upper()) +
+                    """<a href="/{}"><img src="/File/{}/Flag.png"/><br/>{}</a>""".format(member, language, language.upper()) +
                     """</div>\n""")
         f.write("""</div>\n<div style="clear:both"></div>\n""")
